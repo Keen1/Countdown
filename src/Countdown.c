@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <pango/pango.h>
 
+#define FONT_SIZE 36
 
 
 // Stopwatch data structure
@@ -20,10 +21,14 @@ typedef struct {
     GtkWidget *hours_entry;
     GtkWidget *minutes_entry;
     GtkWidget *seconds_entry;
+	struct timeval start_time;
     struct timeval end_time;
     guint timer_id;
     gboolean running;
 } TimerData;
+
+
+
 
 //adjust the font size of our timer and stopwatch labels
 void set_label_font_size(GtkWidget *label, int font_size) {
@@ -79,6 +84,30 @@ static void start_stop_stopwatch(GtkWidget *widget, gpointer user_data) {
         data->timer_id = g_timeout_add(1, tick_stopwatch, data);
     }
 }
+
+//update the color of the time label
+void update_color(GtkWidget *label, const char *text, int elapsed_seconds, int total_seconds) {
+    double red_change_per_second = 255.0 / total_seconds;
+    double green_change_per_second = -255.0 / total_seconds;
+
+    int new_red = (int)(red_change_per_second * elapsed_seconds);
+    int new_green = 255 + (int)(green_change_per_second * elapsed_seconds);
+
+    // Clamp the values to ensure they are within the RGB range
+    if (new_red > 255) new_red = 255;
+    if (new_red < 0) new_red = 0;
+    if (new_green > 255) new_green = 255;
+    if (new_green < 0) new_green = 0;
+
+    // Prepare the markup string with color and text
+    // Convert RGB values to hexadecimal format
+    char color_str[256];
+    sprintf(color_str, "<span foreground=\"#%02X%02X00\">%s</span>", new_red, new_green, text);
+    gtk_label_set_markup(GTK_LABEL(label), color_str);
+}
+
+
+
 //update the timer label
 static void update_timer_label(TimerData *data) {
     struct timeval current_time;
@@ -88,15 +117,23 @@ static void update_timer_label(TimerData *data) {
 
     if (milliseconds < 0) milliseconds = 0;
 
+    int total_seconds = (data->end_time.tv_sec - data->start_time.tv_sec);
+    int elapsed_seconds = total_seconds - (milliseconds / 1000);
+
     int hours = milliseconds / (1000 * 60 * 60);
     int minutes = (milliseconds / (1000 * 60)) % 60;
     int seconds = (milliseconds / 1000) % 60;
     milliseconds %= 1000;
 
+    // Format your time or other text here
     char buffer[100];
     sprintf(buffer, "%02d:%02d:%02d.%03ld", hours, minutes, seconds, milliseconds);
-    gtk_label_set_text(GTK_LABEL(data->label), buffer);
+
+    // Update the label with the new time and change its color based on elapsed time
+    update_color(data->label, buffer, elapsed_seconds, total_seconds);
 }
+
+
 //tick the timer
 static gboolean tick_timer(gpointer user_data) {
     TimerData *data = (TimerData *)user_data;
@@ -131,6 +168,11 @@ static void start_stop_timer(GtkWidget *widget, gpointer user_data) {
 
         struct timeval now;
         gettimeofday(&now, NULL);
+
+        // Set the start time to the current time
+        data->start_time = now;
+
+        // Calculate the end time by adding the specified duration to the current time
         data->end_time.tv_sec = now.tv_sec + hours * 3600 + minutes * 60 + seconds;
         data->end_time.tv_usec = now.tv_usec;
 
@@ -139,6 +181,7 @@ static void start_stop_timer(GtkWidget *widget, gpointer user_data) {
         data->timer_id = g_timeout_add(1, tick_timer, data);
     }
 }
+
 //main function
 //main function
 int main(int argc, char *argv[]) {
@@ -164,7 +207,7 @@ int main(int argc, char *argv[]) {
     // Stopwatch setup
     stopwatch_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     stopwatch_label = gtk_label_new("00:00:00.000");
-	set_label_font_size(stopwatch_label, 24);
+	set_label_font_size(stopwatch_label, FONT_SIZE);
     stopwatch_data.label = stopwatch_label;
 
     // Create a horizontal box for the stopwatch button to control its width more finely
@@ -184,7 +227,7 @@ int main(int argc, char *argv[]) {
     timer_entries_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     gtk_box_set_homogeneous(GTK_BOX(timer_entries_box), TRUE);  // Equal spacing
     timer_label = gtk_label_new("00:00:00.000");
-	set_label_font_size(timer_label, 24);
+	set_label_font_size(timer_label, FONT_SIZE);
     timer_data.label = timer_label;
 
     // Entries setup
