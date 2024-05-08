@@ -2,6 +2,9 @@
 #include <sys/time.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <pango/pango.h>
+
+
 
 // Stopwatch data structure
 typedef struct {
@@ -21,6 +24,16 @@ typedef struct {
     guint timer_id;
     gboolean running;
 } TimerData;
+
+//adjust the font size of our timer and stopwatch labels
+void set_label_font_size(GtkWidget *label, int font_size) {
+    PangoFontDescription *font_desc = pango_font_description_new();
+    pango_font_description_set_size(font_desc, font_size * PANGO_SCALE);
+    gtk_widget_override_font(label, font_desc);
+    pango_font_description_free(font_desc);
+}
+
+
 //validate field inputs
 static gboolean is_valid_integer(const char *str) {
     while (*str) {
@@ -151,6 +164,7 @@ int main(int argc, char *argv[]) {
     // Stopwatch setup
     stopwatch_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     stopwatch_label = gtk_label_new("00:00:00.000");
+	set_label_font_size(stopwatch_label, 24);
     stopwatch_data.label = stopwatch_label;
 
     // Create a horizontal box for the stopwatch button to control its width more finely
@@ -170,6 +184,7 @@ int main(int argc, char *argv[]) {
     timer_entries_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     gtk_box_set_homogeneous(GTK_BOX(timer_entries_box), TRUE);  // Equal spacing
     timer_label = gtk_label_new("00:00:00.000");
+	set_label_font_size(timer_label, 24);
     timer_data.label = timer_label;
 
     // Entries setup
